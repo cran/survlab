@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="survlab package" />
+
+<meta name="date" content="2025-12-06" />
+
+<title>Survival Model-Based Imputation for Laboratory Non-Detect Data</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Survival Model-Based Imputation for
+Laboratory Non-Detect Data</h1>
+<h4 class="author">survlab package</h4>
+<h4 class="date">2025-12-06</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#introduction" id="toc-introduction">Introduction</a></li>
+<li><a href="#installation" id="toc-installation">Installation</a></li>
+<li><a href="#basic-usage" id="toc-basic-usage">Basic Usage</a></li>
+<li><a href="#visualization" id="toc-visualization">Visualization</a></li>
+<li><a href="#advanced-usage" id="toc-advanced-usage">Advanced
+Usage</a></li>
+<li><a href="#understanding-the-data-structure" id="toc-understanding-the-data-structure">Understanding the Data
+Structure</a></li>
+<li><a href="#tips-for-real-laboratory-data" id="toc-tips-for-real-laboratory-data">Tips for Real Laboratory
+Data</a></li>
+<li><a href="#conclusion" id="toc-conclusion">Conclusion</a></li>
+</ul>
+</div>
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The <code>survlab</code> package provides tools for imputing
+non-detect values in environmental laboratory data using survival models
+(including Tobit models). This is particularly useful for environmental
+engineers, consultants, and laboratory professionals working with
+analytical data where measurements fall below detection limits or limits
+of quantification (LOQ).</p>
+<p>Non-detect values are common in environmental monitoring programs,
+contamination assessments, and regulatory compliance testing.
+Traditional approaches like substitution with half the detection limit
+can introduce bias and affect statistical analyses.</p>
+<p>The package automatically: - Selects the best-fitting distribution
+from multiple options - Generates realistic imputed values below their
+respective detection limits - Ensures all imputed values are unique and
+properly constrained - Provides validation and diagnostic tools
+specifically designed for laboratory data</p>
+</div>
+<div id="installation" class="section level2">
+<h2>Installation</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># Install from GitHub (once published)</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co"># devtools::install_github(&quot;yourusername/survlab&quot;)</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="co"># Load the package</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="fu">library</span>(survlab)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(survlab)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">library</span>(data.table)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div>
+</div>
+<div id="basic-usage" class="section level2">
+<h2>Basic Usage</h2>
+<div id="load-example-data" class="section level3">
+<h3>Load Example Data</h3>
+<p>The package includes a synthetic environmental laboratory dataset
+with non-detect values:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Load example data</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">data</span>(multi_censored_data)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Explore the dataset</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>multi_censored_data[, .(</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">total_samples =</span> .N,</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">non_detects =</span> <span class="fu">sum</span>(censored <span class="sc">==</span> <span class="dv">0</span>),</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="at">detects =</span> <span class="fu">sum</span>(censored <span class="sc">==</span> <span class="dv">1</span>),</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="at">min_value =</span> <span class="fu">min</span>(value),</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="at">max_value =</span> <span class="fu">max</span>(value)</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>)]</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt;    total_samples non_detects detects min_value max_value</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt;            &lt;int&gt;       &lt;int&gt;   &lt;int&gt;     &lt;num&gt;     &lt;num&gt;</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; 1:           200          33     167         5  61.62913</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># View the different detection limit levels</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>detection_limits <span class="ot">&lt;-</span> multi_censored_data[censored <span class="sc">==</span> <span class="dv">0</span>, <span class="fu">unique</span>(value)]</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Detection limit levels:&quot;</span>, <span class="fu">paste</span>(<span class="fu">sort</span>(detection_limits), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>))</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#&gt; Detection limit levels: 5, 8, 15, 25</span></span></code></pre></div>
+</div>
+<div id="perform-imputation" class="section level3">
+<h3>Perform Imputation</h3>
+<p>The main function <code>impute_nondetect()</code> automatically
+validates data quality, selects the best distribution, and generates
+imputed values:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># Set seed for reproducibility</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># Perform imputation with parameter validation</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">impute_nondetect</span>(</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">dt =</span> multi_censored_data,</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">value_col =</span> <span class="st">&quot;value&quot;</span>, </span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="at">cens_col =</span> <span class="st">&quot;censored&quot;</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  <span class="at">parameter_col =</span> <span class="st">&quot;parameter&quot;</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="at">unit_col =</span> <span class="st">&quot;unit&quot;</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="validate-results" class="section level3">
+<h3>Validate Results</h3>
+<p>Use the validation function to check imputation quality:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Validate the imputation</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">validate_imputation</span>(result)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#&gt;      loq count min_imputed max_imputed mean_imputed</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt;    &lt;num&gt; &lt;int&gt;       &lt;num&gt;       &lt;num&gt;        &lt;num&gt;</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt; 1:     5    10    3.130343    4.954098     4.411970</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 2:     8     8    1.777147    7.443072     5.988641</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt; 3:    15    12    5.440542   14.849822     9.342475</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co">#&gt; 4:    25     3    5.464246   16.266220    10.072552</span></span></code></pre></div>
+</div>
+<div id="examine-results" class="section level3">
+<h3>Examine Results</h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Look at the first 10 non-detect observations</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>result[censored <span class="sc">==</span> <span class="dv">0</span>, .(</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="at">original_detection_limit =</span> value,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">imputed_value =</span> <span class="fu">round</span>(value_imputed, <span class="dv">4</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="at">final_value =</span> <span class="fu">round</span>(value_final, <span class="dv">4</span>)</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>)][<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>]</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt;     original_detection_limit imputed_value final_value</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt;                        &lt;num&gt;         &lt;num&gt;       &lt;num&gt;</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt;  1:                       25        8.4872      8.4872</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt;  2:                       15       10.3007     10.3007</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt;  3:                        5        4.9371      4.9371</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt;  4:                        5        4.7981      4.7981</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt;  5:                        5        4.4084      4.4084</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt;  6:                        5        4.2841      4.2841</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co">#&gt;  7:                       25       16.2662     16.2662</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co">#&gt;  8:                        5        4.6366      4.6366</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co">#&gt;  9:                        8        6.3738      6.3738</span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="co">#&gt; 10:                        5        4.1271      4.1271</span></span></code></pre></div>
+</div>
+</div>
+<div id="visualization" class="section level2">
+<h2>Visualization</h2>
+<p>You can create plots to visualize the imputation results:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># Prepare data for plotting</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>plot_data <span class="ot">&lt;-</span> <span class="fu">rbind</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  result[censored <span class="sc">==</span> <span class="dv">1</span>, .(<span class="at">value =</span> value, <span class="at">type =</span> <span class="st">&quot;Detected&quot;</span>)],</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  result[censored <span class="sc">==</span> <span class="dv">0</span>, .(<span class="at">value =</span> value_imputed, <span class="at">type =</span> <span class="st">&quot;Imputed&quot;</span>)]</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>)</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># Create histogram</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="fu">ggplot</span>(plot_data, <span class="fu">aes</span>(<span class="at">x =</span> value, <span class="at">fill =</span> type)) <span class="sc">+</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">alpha =</span> <span class="fl">0.7</span>, <span class="at">bins =</span> <span class="dv">30</span>, <span class="at">position =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">attr</span>(result, <span class="st">&quot;max_detection_limit&quot;</span>), </span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>             <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>, <span class="at">color =</span> <span class="st">&quot;red&quot;</span>, <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Distribution Comparison: Detected vs Imputed Values&quot;</span>,</span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="fu">paste</span>(<span class="st">&quot;Red line shows maximum detection limit =&quot;</span>, </span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>                        <span class="fu">round</span>(<span class="fu">attr</span>(result, <span class="st">&quot;max_detection_limit&quot;</span>), <span class="dv">3</span>)),</span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Value&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Count&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;Type&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Detected&quot;</span> <span class="ot">=</span> <span class="st">&quot;blue&quot;</span>, <span class="st">&quot;Imputed&quot;</span> <span class="ot">=</span> <span class="st">&quot;orange&quot;</span>))</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># Q-Q plot to check distribution fit</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">ggplot</span>(result[censored <span class="sc">==</span> <span class="dv">0</span>], <span class="fu">aes</span>(<span class="at">sample =</span> value_imputed)) <span class="sc">+</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="fu">stat_qq</span>() <span class="sc">+</span> </span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="fu">stat_qq_line</span>() <span class="sc">+</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Q-Q Plot of Imputed Values&quot;</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="fu">paste</span>(<span class="st">&quot;Expected distribution:&quot;</span>, </span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>                        <span class="fu">attr</span>(result, <span class="st">&quot;best_distribution&quot;</span>))) <span class="sc">+</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAqAAAAHgCAMAAABNUi8GAAABLFBMVEUAAAAAADoAAGYAOjoAOmYAOpAAZpAAZrY6AAA6ADo6AGY6OgA6OmY6ZmY6ZpA6ZrY6kLY6kNtNTU1NTW5NTY5NbqtNjshmAABmADpmOgBmOmZmkJBmkLZmkNtmtrZmtttmtv9uTU1uTW5uTY5ubo5ubqtuq+SOTU2OTW6OTY6Obk2ObquOyP+QOgCQZgCQZjqQZmaQZpCQkDqQkGaQkLaQtpCQttuQ27aQ2/+rbk2rbm6rjk2ryKur5OSr5P+2ZgC2Zjq2kDq2kGa2tpC2ttu225C229u22/+2/7a2/9u2///Ijk3I///bkDrbkGbbtmbbtpDb27bb29vb/7bb/9vb///kq27k///r6+v/tmb/yI7/25D/27b/29v/5Kv//7b//8j//9v//+T///8OVyONAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAYz0lEQVR4nO2diXrcRnZGQVoKKSWzkLLNOMnElB1vieRJ4tihE0ccZxnNUGI8WSipSYWL+v3fIdgbQKMbqCoU7i3g/N+MRaEbhxdVR1iqgepoSYjiRNIFELItCEpUB0GJ6iAoUR0EJaqDoER1EJSoDoIS1TEX9O5f/ziK3vuLi63LzqM0976LX3t6v/reqz87W2f+Jor2kjc13rspbYy7p3vpnzdHOeLu6e5Z5dVeYKIuxoK+/Shzb+dk27Jc0Cg6brpxvrsu1yJ+Y6pXT4/aGIWg8a8+Tv+8OdqrvoqgYcZU0Lun0c+fx0r+OlpJ0rIsV+in6P5FL0GPC5K7oFf7e3WoAZioi6mg59FB44fWZYVCp7tnmRvJTvbe88TlqHxTvmx5Gi/L3p+892r/4Kf9nV8tF/vRzy/i/eBB/MO9k8Kx2MOCkaz+J8+T1X6K3/HbQtDkd5Z//BSfesSsdOUSsKyse/fr+A0fGzYCGS+Ggq5O7MpzvdZlTUFjydJTgKqgxbI1QX8Wv7Dz7X563L85Sv6WvKsp6FWxenY+ce+jQtBF+gvSI/x59TyjImi5bsqKqvtaoiuGglZO7E5XWq4vKw/xe7kb0ceJLrEh5eG5sqx2iI/l+TheMVXw/sXNUXz5dPdjzsn9Shh3T5Md3x/2E4d3vlu+fRoVVWRvXKRa7j7Pjvl1QVfrXu3/4qI8KSAK40vQqLxsyqRL33Ia/7UUtLKsIehevi9O/pbvlMtThVLQ+Ewg/UW7Z9lPFcvO091qtjP/73/72/2oKWh13ff+/LdmTUBGjYOg9y9SDQ/qy7IfckGT07xMutTARV3QcllD0IPi95wmgqbw8+TsoCboovwnkK1dXiQlKx/Ef82sTd/TFHS1bnp6kV7iEZ1xOAfdyzQ8qC/Lcl69xh9b0GR/e/XgJKFEP/uHf/+foy2CLv/wUXkGTBTG9Co+vQK5e3rv+flq0LNl2ZqgJof4uqCZVfFa6flDdu2THuKLK5vsgF0d9oxfS4/w2XuKc9AVYLVumv/6mqsktbEbB3379WqwqHVZQ9DqRVIh8eaLpLqg0S+zi6T4aPyrZKW97CQzvtD5bhlfG+2exRdJH+cvlL/yj77Oz0svkhGlfO9ZAlbrLmL68u7H6qcORFWMP0m6yT81iioj3+vLGoKuhpSS04LmMNN2Qd/bz4/Bi3I0KWXkx+mD6gtFFtmHWvkgUiHo6n3luvk7GMVXG+vP4n9Mx9g3LWsKurzKB+UTmfdyHcpl289BkxH7FPuf8Q//m5xqZoxk9ffSMfb4PPLe7yvnoOWAbPpRwHflEEAJWK2bDtT/Aj/Vxv5uprd/t96tbcvcUvtEncwv2m+3Q9CZB0GJ6iAoUR3tgpKZB0GJ6iAoUR0EJaqDoER1EJSoDoIS1UFQojrGNyxn9wF13+H7tnGX+qKyyiK/objx1nhZdXHx2tqyVba81B2nlclIMRb0oPtNSdZ6vyHohrc2V+uQCEEnHwQlqmMtaHJX+83RwdWDb7L7fZODf+Jd8ude+rTaQbns5ija+SaXMv85sSN9pO04fevVw7+Pdv8jOcRnuFSeqwffpq89OMmp+ZLjsozKSyn424dnxVvKVTJyRspeSX/vAYIGEfs96Ole8r+r/eRu4L38Ybbk1vXkQfXjXJ1sWfKU5c1RJmjxc3G+ebV/nLm6l52D7meIXND0PfH/i9+QvFy9GbryUgnO37JaJZ2oIVmYP5aflJc+coygAcTyIukg3Zs9zJ9di7t6ke0pj4teT/4slqV/5loVPyfyPTwr31pgyj/rgqZrJZdW+ctFOZWXSnC1oHKV1X8enPzfxbL9gowojMM5aDqNXP5473H+IPxBcXqZLC+WZU9YZjoWPyevn2bH5lzCTJqHFc8rgqZrrbwtSqi8VAW3r7L6zyJ9FgpBQ4iDoKfZWWEuaP7cWU3QfNkmQdPzxvx0dERBb452TtiDhhJ7QRe7v0vONdPj5sOzxc7q0F78WSwrjrbVn4v35TJWhWw7xKfPfu6etQmav1QDt65SU3fBHjSMWAuaXGqkp3jF9UjyXO9O5ZrluFyW3BW/ukjaKy6SUqXSPdrxStD94jorGQPYKV4rr3jWBV27SMrfsr5KVd2rfQQNI5YXSTsnp+nsXnvpuNBe/srOSTm6k54AFMs2DDMt8sfi47eu9pg5LhkK+ss/PSleK4eZCvvah5m+qewxG6tU/hOf++784+p6jmiO62fxunp5wQwMU8tkBF3snNQmECPTyGQETQe18HNy4XY7ojoISlQHQYnqIChRHQQlqoOgRHW8C/pGGiBeAAAXAIICUA1AUACqAQgKQDUAQQGoBiAoANUABAWgGoCgAFQDEBSAagCCAlANQFAAqgEICkA1AEEBqAYgKADVAAQFoBqAoABUAxAUgBQginrYh6AAhADpHEqdKyIoACEAgiopAEA7AEGVFABgA8D9HPT605fL5bvvDx89syxrqaBtxAsA4ALYJujl4fuxoC+eLC8/eG3Ll28b8QIAuAC2CPri0Q/xHvT2q5e27DTibSNeAAAXQOch/vqzf64c4t8QMkr6C/r4SSwph3gAMoAee9DXy9sv7a+SxNtGvAAALoBOQW//BkEBKBY0uYrnEA9ACtAt6O0X6WiTbcTbRrwAAC4APkkCoBqAoABUAxAUgGoAggJQDUBQAKoBCApANQBBAagGICgA1QAEBaAagKAAVAMQFIBqAIICUA1AUACqAQgKQDUAQQGoBiAoANUABAWgGoCgAOwBvSavcasAQQFYA/pN/+VWAYICsAYg6BAA8QKmC0DQIQDiBUwYwDnoAADxAgC4ABAUgGoAggJQDUBQAKoBCApANQBBAagGICgA1QAEBaAagKAAVAMQFIBqAIICUA1AUACqAQgKQDUAQQGoBiAoANUABAWgGmAoqPQ3OJK5xFJQ84j/4xUvAIALAEEBqAYgKADVAAQFoBqAoABUAxAUgGoAggJQDUBQAKoBCApANQBBAagGICgA1QAEBaAagKAAVAMQFIBqAIICUA1AUACqAQgKQDUAQQGoBiAoANUABAWgEVB+OwOCAtAHqHx5CIIC0AaofbcNggLQBWh89RKCAtAEWPtmMAQFoAbQ9sV1CApACaD9axURFIAKwKZv/URQAAoAm7+UFkEBiAO2fWcyggIQBmz/Sm8EBSAK6PrGeQQFIAdoG1dqvsX1N3dFvG3ECwCwAdBt5xJBAUgBeumJoABkAD31RFAAEoDeeiIogPEBBnoiKICxAUZ6IiiAcQGGeiIogBEBPYY914KgAEYCWNi57BD0+tOX8X8eHx4+sasqiXjbiBcAIAHY6bld0MvD918ub798trz+5JkdfamgbcQLAGC790zX3PzSi0c/xHvQyw+TH+13oeJtI14AgFhPa0D3IT5OshfNIv0VoyS8RJHNWiaCvvv+c1v/xf/xKihg3oD84O5zD3r7hYOf8o0rXsCMAatxJY+CXj92uIZX0LjiBcwWUL0y8ieoo5/yjStewEwB9Qt3f4K+OkzCVTwAozTHlfwIOkTEG1e8gBkC1oc9EVRvAbMDtI3KI6jeAmYGaP/QCEH1FjArwKbPNBFUbwHzAWy5nQ5B9RYQLsBsnH3rDSEIqreAYAFRVBraDei4XwlB9RYQLMBA0M7b6RBUbwHBAnoL2uNuTwTVW0C4gH7noL1uRkZQvQVMG9DzXnkE1VvAhAH9H9NEUL0FTBZg8qARguotYKIAs+fgEFRvAZMEmD6miaB6C5ggwPwpYgTVW8DkADYPuSOo3gImBrCbgwFB9RagH9A9WlQCbKcIQVC9BagHVD7S3A6wmZ2uVwVbgqAzA7RI1lNQezuXCKq5AFWANhl7CeqkJ4JqLkAVoFXG7kO3o54IqrkAVYAee8v1RJHcJiDozADmfiYrIKg/gHgBYQMynxHUH0C8gJAB/Z9J8laB62/uinjviBcQLKByNoCg/gDiBcgCIttTyNq5KoL6A4gXMDKgfhWUXbWbV9C4lEJQfwDxAsYFNMaR7ARdu9JHUH8A8QKCE7RlIApB/QHECxAV1PwctHWcFEH9AcQLED0HNQVsGMZHUH8A8QLCAWz+lAlB/QHECwgFsO0zUAT1BxAvIAzA9o/oEdQfQLyAEAD97qj3WcGmmD7eTCYYu2/T9BtLQc0jvvsQL0A7oM/9d8HsQc0j3jviBegG9Ls9FEH9AcQL8A4weGp4fdVBKvAIQNDgAb2fGm5ZcZgKfAIQNHiApaBGj34gqD+AeAEqBTV8MglB/QHEC1B4Dmr84ByC+gOIF6AOYPGQO4L6A4gXoAxgNQcDgvoDiBegCmA5RQiC+gOIF6AHYD87HYL6A4gXoAXgMr8SgvoDiBegA+A2/ReC+gOIF6AB4Do7HYL6A4gXIA9wnjwRQT0CxAuQBlhN3DBoBS4ABJ04IN17BrwJCDppQH5wD3gTEHS6gH5f9+6zggEACDpVQPXKKNBNSIKg0wTUL9yD3IQsCDpFQHNcKcBNKIKg0wOsD3sGtwmrIOjUAG2j8oFtQjUIOi1A+4dGQW1CPQg6IcDG2+nC2YS1IOhkAFs+cQ9lE1qCoBMBbL0hJIxNaA2CTgLQcb9SCJuwIQg6AYD91DdDVeAPUN20m6OdE9dC1iLeNuIF+Ab0uNtT+yZsSX3jTqPo/oVrLfWIt414AV4A5QV7r5uRVW5CvzQ37+Yoig4ci6lFvG3EC/ABKKa76XmvvMZN6Jn1DUwU3T1zqqYa8bYRL8CboP2fIta4CT3T3MTzKNqLD/XDHejF20a8AJ97ULkKxgLUtvLuaRQdJz8shtuFireNeAF+z0HFKhgJUL+KH/DQXkS8bcQL8AAwfUxT4Sb0DeOg4QHMnyJWtwn9g6ChAWwecle2CSZB0LAAdnMwqNoEsyBoQADr2en0bIJxurf4+vHh+y9t8QraRryAoQAOE9ho2QSLdG707ZfPlq8+eG3Ll28b8QKGATjNr6RjE6zSudnXn71e3n5lvwsVbxvxAoYAOE7/pWETLGO4B5X+itF5RuOXvfpOb0GXt18cOhzh5f/xihfgCoj1FK5A9R70+pNny0uHqyTxthEvwA2QHNwD3wQnQKegl/HuMznM20a8bcQLcAFk555Bb4IjgD2oXkA57BnuJrgDus9BLw8PH9nvQOXbRrwAS0Dlwv1NsSS8b5FxBvBJkk5AzcVioJ5PkjxEvG3EC7AANEREUI8RbxvxAowBaxoiqMeIt414AYaAuoRRZZiJc1AfEW8b8QKMAJmDlYeKo7C/RcYZgKCaALmXq4M5giKoGsDqCI6gqyCoEkD1Eqjyc8RHnZ4j3jbiBfQBxBo2DB27Aq0ABFUAyGexmeIEyc4ABBUHrF0ZjV6BZgCCCgNWUm4e5lS+CV4BCCoK6Df0rnoTPAMQVA7Q+5MhvZvgH4CgIoDaSKdIBaEAEFQC0ByJH7+CYAAIKgFA0N5B0PEB1dmREbQjCDo2oBiVL//KOei2IOi4AKtbOnVtwrgABB0TYHnHsaZNGBuAoKMBZnlDvDMAQUcCuEz/pWQTRAAIOgrAbXY6FZsgBEDQEQCOkydq2AQxAIJ6B7jqqWATENQjQLiAmT9S5AxAUK+AdO8p3gQhAxDUH6AYV3rTXDBaBRMAIKgvwErGN+USS0PF2xBBPQJkCqiY2JgmZKwKJgJAUB+A7Cni4mejO5cGqmAyAAQdHpBY2Kol56DmQdChAeX0X677TesKJgVA0GEBLeebzn7KtyGCegSMWUDbpZGCJggZgKCDAZgYxAcAQQcCNGaeFahgmgBDQaW/wVFr8m/TTM88hUuZSCwFNY/4P94RCmib2HPcCqYLQFBnQP3KCEGHBSCoIyAflS//xjnosAAEdQJ0TT3rv4KpAxDUHtD3syLxJggZgKC2gNrMswjqC4CgdoCakR0fZoo3QcgABLUBmH26Lt4EIQMQ1BxgevOHeBOEDEBQU4DRvHReKpgVAEHNALW76HoaKt4EIQMQ1ARgPPXs4BXMDoCgvQHRxkc5xqpgjgAE7QlweMJIvAlCBiBoL0Cf74PzW8FcAQjaA+D4UJF4E4QMQNDO8MwbgvoEOK4fReJbMGsAgm5NsvcU34JZAxB0S7KDu/gWzBqAoJtSXq6/cZ17QbwJQgYgaHsq03+9cZ29RrwJQgYgaFtqnxkhKIL6BJiv35j+C0ER1CfAaP36J5nlRRLnoGIABK3KV9tVrk0x76sCAFsye0GbTq7vK8W3YNaAWQravtOMqnd7DlgAABfAHAVt3Wlunp1OfAtmDZi9oMV9yP4KAOACQNBl1/1K4lswa8AcBW0cyLuGkMS3YNaAWQpaTfcIp/gWzBowD0E3DrT3GYAX34JZA2Yh6KaPKvt9PiS+BbMGTFLQmo6bBOWhzCAAUxS07mO7oAYfrgfcuxMAzELQtb2l0b0fAffuBADzELT5uucCAAwHCF7QtlPJ5jlo48VhCwDgFRCMoBuuabrvJa4XYHFjZ8C9OwFAn/569/0TW/xgm7Z5pMhEUKv7jgPu3QkA+vTYq8NJCGp7W3zAvTsBQI8+u/6rv9YraLd25SmCWwEOAeBV0Hf/9C+rQ7zcl4tGTt/Syle8hpb+gr76XMM5qNP6btN/iW/BrAGdXXf92evABXWdnU58C2YN6Oy8V4dJPrfli7eN8+SJ4lswb0Aow0yWifUMuHMATFzQdO8ZcOcACOiTJOMw78IkAFMVdHXqGXDnAJiqoNtuFhmlAABDAaYoaP3CPeDOATBFQZvjSgF3DoDpCcrUShMDTEvQtlH5gDsHwKQE3XBfU8CdA2BCgm78SDPgzgEwGUG3fOIecOcAmIigW28ICbhzAOgRdPON8Z0Ao4fmLAIAQbc9WtQB6LydLuDOARC8oD3u9gy4cwAELmivm5ED7hwAagS1OAft+xRxwJ0DQI+gpoD+T3IE3DkAQhXU5EGjgDsHQJiCmj0HF3DnAAhRUNPHNAPuHADhCWr+FHHAnQMgNEFtHnIPuHMABCWo5ex0AXcOgIAEtZ4hJODOARCMoA4T2ATcOQACEdRpfqWAOwdAEII6Tv8VcOcACEBQ59npAu4cAOoFHWB2uoA7B4ByQQeZnS7gzgGgWdChZqcLuHMA6BV0uNnpAu4cAFoFHXJ2uoA7B4BOQYednS7gzgGgUdChZ6cLuHMA6BN0+NnpAu4cANoE9TE7XcCdA0CXoH5mpwu4cwAYC+rvuxndvouTTC2Wgpqn3z8dj7PTBbz3AKBEUK+z0wXcOQCGFNR6gmPPs9MF3DkABhR00+xKXZV5n50u4M4BIC7oCLPTBdw5AIQFHWV2uoA7B4DkOehYs9MF3DkA5K7ix5udLuDOASAl6Jiz0wXcOQBkBB13drqAOweAhKBjz04XcOcAGF/Q8WenC7hzAIwtqMTsdAF3DoBxBZWZnS7gzgEwoqCWkyci6MwBIwkqODtdwJ0DYCRBRWenC7hzAIwiqPDsdAF3DoARBBWfnS7gzgHgXdAoEm8b8QIAuAC8CprsPcXbRrwAAC4Af4Lm40ribSNeAAAXgC9By1NP8bYRLwCAC8CPoJUrI/G2ES8AgAvAh6C1C3fxthEvAIALYHhBG+NK4m0jXgAAF8DQgq4Ne4q3jXgBAFwAwwraMiov3jbiBQBwAQwpqNXEDZ1B0FkDhnwuvnW5eNuIFwDABTCQoJs/cRdvG/ECALgABhF02w0h4m0jXgAAF8AAgm6/X0m8bcQLAOACcBa063Y68bYRLwCAC8BR0O67PcXbRrwAAC4AJ0H73Iws3jbiBQBwAdgL2vMxTfG2ES8AgAvAVtDeT3KIt414AQBcAHaCGjxoJN424gUAcAHYCGr0HJx424gXAMAFYC6o4WOa4m0jXgAAF0C3bbdfHH7wevV+U6PF20a8AAAugE7f3n3/ZPnqw95vX4t424gXAMAF0Gnc7Vcvl9efvrTly7eNeAEAXACdgl5/9np5++Wz4vcQMkp6C3r5QVVQQsaN4R6UkHHj/RyUEJf0uIr/vHIVT8i4MR0HJWTUeJ8flBCXIChRHQQlqoOgRHV8C3r9+PDwieff0VWC6CCZhmtM6WFCFwk8C5oM8V9/IjrMf3n4vmD31O+1kYlsCzhK4FnQy6RvXkjuQl88+kFy/6Hgcw7hFnCUYIRzUOkPSkX9UPFJsfQhfukggX9Bk4+iRCPaPSrutZEX1F4Cj4K+ODz8MLlIEPMzK4A9qLygDhL4v4oXvoYX7h4F56DygrpI4FlQBX7Kdo+Ke22EBXWSwLOgrw6TyErKOKiwoE4S8EkSUR0EJaqDoER1EJSoDoIS1UFQojoISlQHQYnqIChRHQT1m/Odk+XN0YF0GeEGQT3ndC/5H7ENgnrO1YNvH55JFxFwENR3zqNj6RJCDoL6zmnEEd4hCOo5i93fHbELtQ+C+s1NbOdil5NQ6yCo35zev1jePeUgbx0EJaqDoER1EJSoDoIS1UFQojoISlQHQYnqIChRHQQlqoOgRHX+H1nmICkZ1uEoAAAAAElFTkSuQmCC" /><!-- --></p>
+</div>
+<div id="advanced-usage" class="section level2">
+<h2>Advanced Usage</h2>
+<div id="custom-distribution-selection" class="section level3">
+<h3>Custom Distribution Selection</h3>
+<p>You can specify which distributions to test and adjust validation
+thresholds:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Test only specific distributions with custom validation</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>result_custom <span class="ot">&lt;-</span> <span class="fu">impute_nondetect</span>(</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  <span class="at">dt =</span> multi_censored_data,</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="at">dist =</span> <span class="fu">c</span>(<span class="st">&quot;gaussian&quot;</span>, <span class="st">&quot;lognormal&quot;</span>, <span class="st">&quot;weibull&quot;</span>),</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  <span class="at">min_observations =</span> <span class="dv">50</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>  <span class="at">max_censored_pct =</span> <span class="dv">50</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="model-information" class="section level3">
+<h3>Model Information</h3>
+<p>The function returns useful model information as attributes:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Extract model information</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Best distribution:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;best_distribution&quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#&gt; Best distribution: lognormal</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Model AIC:&quot;</span>, <span class="fu">round</span>(<span class="fu">attr</span>(result, <span class="st">&quot;aic&quot;</span>), <span class="dv">2</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#&gt; Model AIC: 1220.47</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Parameter:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;parameter&quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt; Parameter: Nitrate</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Unit:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;unit&quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt; Unit: mg/l NO3</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Sample size:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;sample_size&quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#&gt; Sample size: 200</span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Censoring percentage:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;censored_pct&quot;</span>), <span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="co">#&gt; Censoring percentage: 16.5 %</span></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Detection limits found:&quot;</span>, <span class="fu">paste</span>(<span class="fu">attr</span>(result, <span class="st">&quot;detection_limits&quot;</span>), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co">#&gt; Detection limits found: 25, 15, 5, 8</span></span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Maximum detection limit:&quot;</span>, <span class="fu">attr</span>(result, <span class="st">&quot;max_detection_limit&quot;</span>), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a><span class="co">#&gt; Maximum detection limit: 25</span></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a></span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a><span class="co"># Access the fitted model</span></span>
+<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">attr</span>(result, <span class="st">&quot;best_model&quot;</span>)</span>
+<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a><span class="fu">summary</span>(model)</span>
+<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a><span class="co">#&gt; Call:</span></span>
+<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a><span class="co">#&gt; survival::survreg(formula = survival::Surv(x, cens, type = &quot;left&quot;) ~ </span></span>
+<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a><span class="co">#&gt;     1, dist = d)</span></span>
+<span id="cb11-26"><a href="#cb11-26" tabindex="-1"></a><span class="co">#&gt;               Value Std. Error    z      p</span></span>
+<span id="cb11-27"><a href="#cb11-27" tabindex="-1"></a><span class="co">#&gt; (Intercept)  2.4672     0.0429 57.6 &lt;2e-16</span></span>
+<span id="cb11-28"><a href="#cb11-28" tabindex="-1"></a><span class="co">#&gt; Log(scale)  -0.5339     0.0556 -9.6 &lt;2e-16</span></span>
+<span id="cb11-29"><a href="#cb11-29" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb11-30"><a href="#cb11-30" tabindex="-1"></a><span class="co">#&gt; Scale= 0.586 </span></span>
+<span id="cb11-31"><a href="#cb11-31" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb11-32"><a href="#cb11-32" tabindex="-1"></a><span class="co">#&gt; Log Normal distribution</span></span>
+<span id="cb11-33"><a href="#cb11-33" tabindex="-1"></a><span class="co">#&gt; Loglik(model)= -608.2   Loglik(intercept only)= -608.2</span></span>
+<span id="cb11-34"><a href="#cb11-34" tabindex="-1"></a><span class="co">#&gt; Number of Newton-Raphson Iterations: 6 </span></span>
+<span id="cb11-35"><a href="#cb11-35" tabindex="-1"></a><span class="co">#&gt; n= 200</span></span></code></pre></div>
+</div>
+</div>
+<div id="understanding-the-data-structure" class="section level2">
+<h2>Understanding the Data Structure</h2>
+<p>The package expects laboratory data with a specific structure:</p>
+<ul>
+<li><strong>value_col</strong>: Contains either detected values (for
+samples above detection limit) or detection limit values (for non-detect
+samples)</li>
+<li><strong>cens_col</strong>: Binary indicator where 0 = non-detect
+(below detection limit), 1 = detected (above detection limit)</li>
+</ul>
+<p>For non-detect observations, the value in <code>value_col</code> is
+treated as the detection limit for that specific analysis, allowing for
+different detection limits across samples or analytical methods.</p>
+</div>
+<div id="tips-for-real-laboratory-data" class="section level2">
+<h2>Tips for Real Laboratory Data</h2>
+<ol style="list-style-type: decimal">
+<li><strong>Multiple Detection Limits</strong>: The package handles data
+with different detection limits automatically</li>
+<li><strong>Distribution Selection</strong>: Let the function test
+multiple distributions for best fit</li>
+<li><strong>Validation</strong>: Always run
+<code>validate_imputation()</code> to check results</li>
+<li><strong>Seed Setting</strong>: Use <code>set.seed()</code> for
+reproducible results in reports</li>
+<li><strong>Large Datasets</strong>: The package uses
+<code>data.table</code> for efficient memory usage</li>
+<li><strong>Environmental Data</strong>: Works well with typical
+environmental contaminant distributions (often lognormal)</li>
+</ol>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>The <code>survlab</code> package provides a robust solution for
+imputing non-detect values in environmental laboratory data using
+survival models. The automatic distribution selection and built-in
+validation ensure reliable results for environmental monitoring,
+contamination assessment, and regulatory compliance applications.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
