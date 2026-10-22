@@ -1,4 +1,11 @@
-<a href="https://lpereira-ue.github.io/survlab/"><img src="man/figures/logo.png" align="right" height="120" alt="survlab website" /></a>
+
+# survlab <img src="man/figures/logo.png" alt="survlab logo" align="right" height="139"/>
+
+<!-- badges: start -->
+
+[![CRAN status](https://www.r-pkg.org/badges/version/survlab)](https://CRAN.R-project.org/package=survlab) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental) [![CRAN downloads](https://cranlogs.r-pkg.org/badges/last-month/survlab)](https://cran.r-project.org/package=survlab)
+
+<!-- badges: end -->
 
 
 ## Overview
@@ -150,4 +157,4 @@ To cite survlab in publications, please use:
 
 ``` r
 citation("survlab")
-``
+```

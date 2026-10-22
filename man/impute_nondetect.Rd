@@ -14,6 +14,8 @@ impute_nondetect(
   min_observations = 25,
   max_censored_pct = 75,
   min_value = 0,
+  zero_value = 1e-05,
+  control = survival::survreg.control(),
   verbose = FALSE
 )
 }
@@ -36,6 +38,19 @@ impute_nondetect(
 
 \item{min_value}{Minimum allowable value for imputed concentrations (default: 0, use 1e-10 for strictly positive)}
 
+\item{zero_value}{Value that replaces exact zeros when fitting the
+distributions defined only for positive values ("lognormal", "weibull",
+"exponential", "loglogistic"), which otherwise cannot be fitted (default:
+1e-5). The replacement is used for model fitting only; the zeros are kept
+in \code{[value_col]_final}. Use \code{NULL} to disable, in which case
+those distributions are skipped whenever the data contain a zero.}
+
+\item{control}{A \code{\link[survival]{survreg.control}} object used to control
+the fitting algorithm, e.g. maximum number of iterations and convergence
+tolerance. Defaults to \code{survival::survreg.control()}. Increase
+\code{maxiter} (e.g. \code{survreg.control(maxiter = 200)}) when
+convergence warnings are raised for complex datasets.}
+
 \item{verbose}{Logical indicating whether to display progress messages and distribution fitting information (default: FALSE)}
 }
 \value{
@@ -55,6 +70,12 @@ The returned object also has attributes containing model information:
   \item{aic}{AIC value of the best model}
   \item{sample_size}{Total number of observations}
   \item{censored_pct}{Percentage of censored observations}
+  \item{best_converged}{\code{FALSE} if no distribution converged and the
+    selected model is the best non-converged fit}
+  \item{fits}{A data.table with one row per distribution tried: AIC,
+    convergence, and any error or warning message}
+  \item{n_zero_replaced}{Number of exact zeros replaced by \code{zero_value}
+    when fitting the positive distributions}
 }
 }
 \description{
@@ -69,8 +90,14 @@ The function performs several validation checks:
 1. Ensures sufficient sample size (>= min_observations)
 2. Checks that censoring percentage is reasonable (<= max_censored_pct)
 3. Validates that only one parameter and unit are present (if columns provided)
-4. Tests multiple distributions and selects the best based on AIC
+4. Tests multiple distributions and selects the best based on AIC among
+   those that converged (if none converged, the best non-converged fit is
+   used and a warning is raised)
 5. Generates random imputed values below each observation's detection limit and above min_value
+
+The imputed values are random draws from R's random number generator; call
+\code{\link[base]{set.seed}} before \code{impute_nondetect()} to make them
+reproducible.
 
 For non-detect observations (censored = 0), the value in value_col is treated
 as the detection limit for that specific analysis, allowing for different
@@ -101,6 +128,14 @@ head(result[censored == 0, .(value, value_imputed, value_final)])
 
 # Check best distribution selected
 attr(result, "best_distribution")
+
+# Increase max iterations for difficult datasets
+result <- impute_nondetect(
+  dt        = multi_censored_data,
+  value_col = "value",
+  cens_col  = "censored",
+  control   = survival::survreg.control(maxiter = 200)
+)
 
 # With parameter and unit validation
 result <- impute_nondetect(
